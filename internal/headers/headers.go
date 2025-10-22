@@ -20,6 +20,7 @@ func NewHeaders()*Headers{
 }
 
 
+
 func (h Headers)Get(name string)(string,bool){
 	str , ok := h.headers[strings.ToLower(name)]
 	return str,ok	
