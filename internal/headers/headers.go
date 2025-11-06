@@ -30,6 +30,11 @@ func (h Headers) Set(name ,value string){
 	h.headers[strings.ToLower(name)] = value
 }
 
+func (h Headers)Delete(name string){
+	name = strings.ToLower(name)
+	delete(h.headers,name)
+
+}
 func (h Headers)ForEach(cb func(k,v string)){
 	for k,v:= range h.headers{
 		cb(k,v)

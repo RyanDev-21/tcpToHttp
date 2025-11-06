@@ -1,8 +1,10 @@
 package response
 
 import (
+	"crypto/sha256"
 	"fmt"
 	"io"
+	"log"
 	"tests/internal/headers"
 )
 
@@ -34,6 +36,22 @@ func NewWriter(writer io.Writer)*Writer{
 	return &Writer{writer: writer}
 }
 
+
+func (w *Writer)WriteChunkedBody(buff []byte){
+	w.WriteBody([]byte(fmt.Sprintf("%x\r\n",len(buff))))
+	w.WriteBody(buff)
+	w.WriteBody([]byte("\r\n"))
+}
+
+func (w *Writer)WriteChunkedBodyDone(body []byte){
+	w.WriteBody([]byte("0\r\n"))
+	trailers := headers.NewHeaders()
+	trailers.Set("X-Content-SHA256",fmt.Sprintf("%02x",sha256.Sum224(body)))
+	trailers.Set("X-Content-Length",fmt.Sprintf("%v",len(body)))
+	w.WriteBody([]byte("\r\n"))
+}
+
+
 func (w *Writer)WriteStatusLine(statusCode StatusCode)error{
 	var b []byte
 	switch statusCode{
@@ -46,9 +64,18 @@ func (w *Writer)WriteStatusLine(statusCode StatusCode)error{
 		default:
 			return ErrNotFoundStatusCode
 	}
+	log.Printf("StatusLine /%v/",string(b))
 	_,err:=w.writer.Write(b)
 	return err 
 	
+}
+
+func (w *Writer)WriteTrailers(h headers.Headers)error{
+	h.Delete("Content-length")
+	h.Set("Trailer","X-Content-SHA256")
+	h.Set("Trailer","X-Content-Length")
+	
+	return nil
 }
 
 func (w *Writer)WriteHeaders(h headers.Headers) error{
@@ -61,6 +88,7 @@ func (w *Writer)WriteHeaders(h headers.Headers) error{
 		b=fmt.Appendf(b,"%s: %s\r\n",k,v)
 	})
 	b=fmt.Append(b,"\r\n")
+	log.Printf("Headers /%v/",string(b))
 	_,err= w.writer.Write(b)
 	return err
 }
